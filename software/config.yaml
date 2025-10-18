@@ -1,0 +1,70 @@
+board: ESPDUINO-32
+name: PANT.S.
+
+stepping: 
+  idle_ms: 0
+
+axes:
+  shared_stepper_disable_pin: gpio.12:high
+
+  x:
+    steps_per_mm: 40
+    max_rate_mm_per_min: 5000
+    acceleration_mm_per_sec2: 300
+    max_travel_mm: 1000
+    homing:
+      cycle: 1
+      mpos_mm: 40
+      positive_direction: true
+    
+    motor0:
+      stepstick:
+        direction_pin: gpio.16
+        step_pin: gpio.26
+      limit_pos_pin: gpio.13:pu 
+
+  y:
+    steps_per_mm: 40
+    max_rate_mm_per_min: 5000
+    acceleration_mm_per_sec2: 300
+    max_travel_mm: 1000
+    homing:
+      cycle: 1
+      mpos_mm: 40
+      positive_direction: true
+
+    motor0:
+      stepstick:
+        direction_pin: gpio.27
+        step_pin: gpio.25
+      limit_pos_pin: gpio.05:pu
+  a:
+    steps_per_mm: 40
+    max_rate_mm_per_min: 5000
+    acceleration_mm_per_sec2: 300
+    max_travel_mm: 1000
+    homing:
+      cycle: 1
+      mpos_mm: 40
+      positive_direction: true
+
+    motor0:
+      stepstick:
+        direction_pin: gpio.14
+        step_pin: gpio.17
+      limit_pos_pin: gpio.23:pu
+  b:
+    steps_per_mm: 40
+    max_rate_mm_per_min: 5000
+    acceleration_mm_per_sec2: 300
+    max_travel_mm: 1000
+    homing:
+      cycle: 1
+      mpos_mm: 40
+      positive_direction: true
+
+    motor0:
+      stepstick:
+        direction_pin: gpio.18
+        step_pin: gpio.19
+      limit_pos_pin: gpio.04:pu
