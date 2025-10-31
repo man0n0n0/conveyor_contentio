@@ -1,12 +1,12 @@
 import os
 from machine import Pin, I2C
 from ssd1306 import SSD1306_I2C  
-from time import sleep_ms
+from time import sleep_ms, ticks_ms, ticks_diff
 from stepper import Stepper
 
 '''piece variable'''
 rail_offset = 100
-rail_length = 8000
+rail_length = 9500
 speed = 1000 # steps/sec
 steps_per_mm = 40 # for 20 teeth GT2 pulley
 
@@ -23,18 +23,29 @@ def display_txt(t):
     display.show()
 
 # --- STEPPER INIT ---
-s = Stepper(1,0,2) #stp,dir,en
+s = Stepper(1,0,2,invert_dir=True) #stp,dir,en
 #create an input pin for the end switches (switch connects pin to GND)
-end_s = [Pin(3, Pin.IN),Pin(4, Pin.IN)] #pull down doest work properly
+end_s = [Pin(3, Pin.IN, Pin.PULL_UP), Pin(4, Pin.IN, Pin.PULL_UP)] #pull up doesn't seems to work
+cycle_count = 0
+
+def read_switch(pin, stable_time=20):
+    """Return True if switch is pressed (stable), False otherwise."""
+    first = pin.value()
+    start = ticks_ms()
+    while ticks_diff(ticks_ms(), start) < stable_time:
+        if pin.value() != first:
+            first = pin.value()
+            start = ticks_ms()
+    return first == 1  # active high logic
 
 # --- HOMING ---
 def homing():
     display_txt(f" homing")
     s.speed(speed) 
-    s.free_run(-1) #move forward
+    s.free_run(-1) #move backward
 
-    while end_s[0].value() == 0:
-        pass
+    while not read_switch(end_s[0]):
+        sleep_ms(2)
 
     s.stop() #stop as soon as the switch is triggered
     s.overwrite_pos(0) #set position as 0 point
@@ -50,22 +61,32 @@ def homing():
     sleep_ms(1000)
     
 # --- MOVE BETWEEN ENDS ---    
-def move_to(pos_mm):
+def move_to(pos_mm, direction):
     display_txt(f"{pos_mm}")
     target_steps = pos_mm * steps_per_mm
+
     s.target(target_steps)
     s.track_target()
-    while s.get_pos() != target_steps:
-        if end_s[0].value() or end_s[1].value():
-            homing()
-            return
-        sleep_ms(10)
+        
+    if direction < 0 :
+        while s.get_pos() > (target_steps):
+            sleep_ms(10)
+            
+    if direction > 0 :
+        while s.get_pos() < (target_steps): 
+            sleep_ms(10)
 
 '''execution'''
 homing()
 
 while True :
-    move_to(rail_length-rail_offset)   # move to far end
+    move_to(rail_length, 1)   # move to far end
     sleep_ms(500)
-    move_to(rail_offset)             # back to start
+    move_to(rail_offset, -1)             # back to start
     sleep_ms(500)
+    cycle_count += 1
+    
+    # Homing routine 
+    if cycle_count >= 10 :
+        cycle_count = 0
+        homing()

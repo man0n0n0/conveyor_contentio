@@ -8,14 +8,14 @@ axes:
   shared_stepper_disable_pin: gpio.12:high
 
   x:
-    steps_per_mm: 40
-    max_rate_mm_per_min: 5000
-    acceleration_mm_per_sec2: 300
+    steps_per_mm: 200
+    max_rate_mm_per_min: 15000
+    acceleration_mm_per_sec2: 450
     max_travel_mm: 1000
     homing:
       cycle: 1
-      mpos_mm: 40
-      positive_direction: true
+      mpos_mm: -65
+      positive_direction: false
     
     motor0:
       stepstick:
@@ -24,14 +24,14 @@ axes:
       limit_pos_pin: gpio.13:pu 
 
   y:
-    steps_per_mm: 40
-    max_rate_mm_per_min: 5000
-    acceleration_mm_per_sec2: 300
+    steps_per_mm: 200
+    max_rate_mm_per_min: 15000
+    acceleration_mm_per_sec2: 450
     max_travel_mm: 1000
     homing:
       cycle: 1
-      mpos_mm: 40
-      positive_direction: true
+      mpos_mm: -65
+      positive_direction: false
 
     motor0:
       stepstick:
@@ -39,14 +39,14 @@ axes:
         step_pin: gpio.25
       limit_pos_pin: gpio.05:pu
   a:
-    steps_per_mm: 40
-    max_rate_mm_per_min: 5000
-    acceleration_mm_per_sec2: 300
+    steps_per_mm: 200
+    max_rate_mm_per_min: 15000
+    acceleration_mm_per_sec2: 450
     max_travel_mm: 1000
     homing:
       cycle: 1
-      mpos_mm: 40
-      positive_direction: true
+      mpos_mm: -65
+      positive_direction: false
 
     motor0:
       stepstick:
@@ -54,14 +54,14 @@ axes:
         step_pin: gpio.17
       limit_pos_pin: gpio.23:pu
   b:
-    steps_per_mm: 40
-    max_rate_mm_per_min: 5000
-    acceleration_mm_per_sec2: 300
+    steps_per_mm: 200
+    max_rate_mm_per_min: 15000
+    acceleration_mm_per_sec2: 450
     max_travel_mm: 1000
     homing:
       cycle: 1
-      mpos_mm: 40
-      positive_direction: true
+      mpos_mm: -65
+      positive_direction: false
 
     motor0:
       stepstick:

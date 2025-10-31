@@ -1,19 +1,21 @@
 import os
 import math
 import vl53l0x
+import network
+import socket
 from random import randint
-from machine import Pin, SoftI2C, UART
+from machine import Pin, SoftI2C
 from time import sleep_ms, time
 
 '''piece variable'''
 # Detection
-MAX_MESURE = 2000 #in cm
+MAX_MESURE = 200 #in cm
 
 # Worm motion
-THREAD_LENGTH = 110
+THREAD_LENGTH = 90
 HEAD_PERIMETER = THREAD_LENGTH//2
 ENABLE_DURATION = 2 # in sec
-F_TRACKING = 3500 # in mm/min
+F_TRACKING = 5000 # in mm/min
 F_STRESS = 2000 # in mm/min
 
 '''init'''
@@ -42,7 +44,7 @@ xshut = [
     Pin(7, Pin.OUT),
     Pin(6, Pin.OUT),
     Pin(5, Pin.OUT)
-]
+] # reversed list order to fit physicalitty of the device
 
 for power_pin in xshut:
     power_pin.value(0)
@@ -59,19 +61,39 @@ for index , power_pin in enumerate(xshut):
     vl53.insert(index , vl53l0x.VL53L0X(i2c))  
     if index < len(xshut) - 1:
         vl53[index].set_address(index + 0x30)
+sleep_ms(500)
 
 # --stepper control--
-# Initialize UART
-uart = UART(1, baudrate=115200, tx=13, rx=12)
+SSID = 'FluidNC'
+PASSWORD = '12345678'
+FLUIDNC_IP = '192.168.0.1'   # Change to your FluidNC IP
+
+# Connect to Wi-Fi
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
+if not wlan.isconnected():
+    print('Connecting to Wi-Fi...')
+    wlan.connect(SSID, PASSWORD)
+    for _ in range(20):  # 10 seconds total
+        if wlan.isconnected():
+            break
+        print('.', end='')
+        sleep_ms(500)
+
+# Connect to FluidNC via Telnet (port 23)
+addr = socket.getaddrinfo(FLUIDNC_IP, 23)[0][-1]
+s = socket.socket()
+s.connect(addr)
+print(f'Connected to {SSID}')
 
 # Wake up FLUIDNC
-uart.write(b'\r\n') 
+s.send(b'\r\n') 
 sleep_ms(2000)
 
-uart.write(b'$H\n')
-sleep_ms(5000)
+#s.send(b'$H\n')
+#sleep_ms(5000)
 
-uart.write(b'$X\n')
+s.send(b'$X\n')
 sleep_ms(100)
 
 ''''execution'''
@@ -90,24 +112,29 @@ while True:
             pass  # Skip sensor if reading fails
     
     if min_index != -1:
-        closer_body["angle"] = min_index*(math.pi/4) #in radian
+        closer_body["angle"] = min_index*(math.pi/4) # 45 deg in radian
         closer_body["distance"] = min_range
+        print(closer_body,min_index*45)
     
     if min_index != prev_min_index :
         
         if IDLE :
-            uart.write(b"$Motor/Enable\n") #enable all stepper
+            s.send(b"$Motor/Enable\n") #enable all stepper
+            sleep_ms(10)
             IDLE = False
                         
         # Populate the target value and add a random value within the range of possible to ensure realisitic move
-        pos[0] = int(math.cos(closer_body["angle"]) * HEAD_PERIMETER)  
-        pos[1] = int(math.sin(closer_body["angle"]) * HEAD_PERIMETER) 
+        pos[0] = int(math.cos(closer_body["angle"]) * HEAD_PERIMETER) + randint(-17,17)
+        pos[1] = int(math.sin(closer_body["angle"]) * HEAD_PERIMETER) + randint(-17,17)
 
         #tracking state
         feedrate = F_TRACKING
+        
+        print(pos)
 
         # Send coordonate to fluid_nc
-        uart.write(f"G1X{pos[0]}Y{pos[1]}F{feedrate}\n".encode())
+        # Send G-code
+        s.send(f"G1X{pos[0]}Y{pos[1]}F{feedrate}\n".encode())
         
         # Ensure end of execution
         pos_dif = [x - y for x, y in zip(pos, prev_pos)]
@@ -124,7 +151,7 @@ while True:
     
     else:
         if time() - prev_move_time < ENABLE_DURATION :
-            uart.write(b"$Motor/Disable\n") #disable all stepper
+            s.send(b"$Motor/Disable\n") #disable all stepper
             IDLE = True
         sleep_ms(50) # waiting time between readings
     

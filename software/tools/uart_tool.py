@@ -19,7 +19,7 @@ if resp:
     print(resp.decode())
 
 # Send a G-code move command
-uart.write(b"G0 X110\n")
+uart.write(b"$Motor/Enable\n")
 time.sleep(0.1)
 resp = uart.read()
 if resp:

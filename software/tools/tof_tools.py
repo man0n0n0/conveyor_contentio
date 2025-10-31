@@ -65,5 +65,7 @@ while True:
     else:
         print("No valid readings")
     
+    
+    
     sleep_ms(10)  # Small delay between readings
 
