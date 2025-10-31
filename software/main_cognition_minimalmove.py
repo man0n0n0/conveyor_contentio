@@ -14,16 +14,13 @@ THREAD_LENGTH = 110
 HEAD_PERIMETER = THREAD_LENGTH//2
 ENABLE_DURATION = 2 # in sec
 F_TRACKING = 3500 # in mm/min
-F_TRACKING_INTERVAL = 500
 F_STRESS = 2000 # in mm/min
-SMOOTH_STEPS = 10  # number of interpolated steps per move
 
 '''init'''
 # variable
 pos = [0,0,0,0] #x,y,a,b
 prev_pos = pos
 prev_min_index = 0
-prev_move_time = time()
 closer_body = {"angle":0,"distance":0}
 IDLE = False
 
@@ -100,52 +97,30 @@ while True:
         
         if IDLE :
             uart.write(b"$Motor/Enable\n") #enable all stepper
-            sleep_ms(50)
             IDLE = False
                         
-                # --- Compute new target position ---
-        pos = [
-            int(math.cos(closer_body["angle"]) * HEAD_PERIMETER),
-            int(math.sin(closer_body["angle"]) * HEAD_PERIMETER)
-        ]
+        # Populate the target value and add a random value within the range of possible to ensure realisitic move
+        pos[0] = int(math.cos(closer_body["angle"]) * HEAD_PERIMETER)  
+        pos[1] = int(math.sin(closer_body["angle"]) * HEAD_PERIMETER) 
 
-        # --- Random feedrate to simulate realistic motion ---
-        feedrate = randint(F_TRACKING - F_TRACKING_INTERVAL, F_TRACKING + F_TRACKING_INTERVAL)
+        #tracking state
+        feedrate = F_TRACKING
 
-        # --- Compute distance and estimated execution time (in ms) ---
+        # Send coordonate to fluid_nc
+        uart.write(f"G1X{pos[0]}Y{pos[1]}F{feedrate}\n".encode())
+        
+        # Ensure end of execution
         pos_dif = [x - y for x, y in zip(pos, prev_pos)]
         abs_pos_dif = [abs(x) for x in pos_dif]
-        max_step = max(abs_pos_dif)
-        t_exec = max_step / (feedrate / 60) * 1000  # ms total move time
-
-        # --- Interpolated smooth movement ---
-        dx = pos_dif[0] / SMOOTH_STEPS
-        dy = pos_dif[1] / SMOOTH_STEPS
-
-        # Split total time evenly across substeps
-        substep_time = t_exec / SMOOTH_STEPS
-
-        for step in range(1, SMOOTH_STEPS + 1):
-            # Optional: cosine easing for smoother acceleration/deceleration
-            t = step / SMOOTH_STEPS
-            ease_t = (1 - math.cos(t * math.pi)) / 2  # smoothstep curve
-
-            # Compute intermediate coordinates
-            intermediate_pos = [
-                int(prev_pos[0] + pos_dif[0] * ease_t),
-                int(prev_pos[1] + pos_dif[1] * ease_t)
-            ]
-
-            # Send intermediate G-code command
-            uart.write(f"G1X{intermediate_pos[0]}Y{intermediate_pos[1]}F{feedrate}\n".encode())
-
-            # Wait proportional to execution time
-            sleep_ms(int(substep_time))
-
-        # --- Save state for next iteration ---
+        max_step = max(abs_pos_dif) # get the larger stepping operation
+        t_exec = max_step / (feedrate/60) * 1000 # in ms
+        
+        #save prev_pos_value
         prev_pos = pos.copy()
-        prev_move_time = time()
         prev_min_index = min_index
+        prev_move_time = time()
+        
+        sleep_ms(int(t_exec))
     
     else:
         if time() - prev_move_time < ENABLE_DURATION :
