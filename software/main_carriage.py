@@ -6,8 +6,8 @@ from stepper import Stepper
 
 '''piece variable'''
 rail_offset = 100
-rail_length = 9500
-speed = 1000 # steps/sec
+rail_length = 8850
+speed = 1500 # steps/sec
 steps_per_mm = 40 # for 20 teeth GT2 pulley
 
 # --- SCREEN INIT ---
