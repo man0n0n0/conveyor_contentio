@@ -11,14 +11,14 @@ print(f"DEBUG STATE : {debug}")
 
 '''piece variable'''
 # Security
-HOMING_COUNT = 25 #number of stress cycle
+HOMING_COUNT = 33 #number of fast moving cycle
 
 # Detection
 MIN_MESURE = 300 # in mm
 MAX_MESURE = 2000 #in mm
 
 # Worm motion
-THREAD_LENGTH = 110
+THREAD_LENGTH = 100
 HEAD_PERIMETER = THREAD_LENGTH//2
 
 ENABLE_DURATION = 120 # in sec
@@ -26,13 +26,12 @@ ENABLE_DURATION = 120 # in sec
 TRACKING_VARIANCE = 5 #in mm
 F_TRACKING = 2000 # in mm/min
 F_TRACKING_INTERVAL = 500 #random variability
-TRACKING_DURATION = 6
+TRACKING_DURATION = [6,11] #bornes of a randint
 
-F_STRESS = 10000 # in mm/min
-F_STRESS_INTERVAL = 250 # random variability
-STRESS_OFFSET = 10 # to reduce travel (reduce system usage) === NOT USED
-STRESS_TRIGER_DISTANCE = 600 #in cm
-STRESS_DURATION = 5
+F_STRESS = 7500 # in mm/min
+F_STRESS_INTERVAL = 500 # random variability
+STRESS_OFFSET = 50 # to reduce travel (reduce system usage)
+STRESS_TRIGER_DISTANCE = 400 #in mm
 
 SMOOTH_STEPS = 10  # number of interpolated steps per move
 
@@ -40,7 +39,7 @@ SMOOTH_STEPS = 10  # number of interpolated steps per move
 BREATHING_INTERVAL = 30  # interval of mouvement for breathing
 BREATHING_INCREMENT = 12 # deplacmeent per cycle
 F_BREATHING = 500
-BREATHING_WAIT = 3 # waiting between movement
+BREATHING_WAIT = 5 # waiting between movement
 
 '''init'''
 # variable
@@ -49,7 +48,7 @@ directions=[1,1,1,1] # positiv cause the homign is negative
 prev_pos = pos
 prev_min_index = 0
 cycle_count = 0
-stress_cycle_count = 0
+fast_cycle_count = 0
 prev_move_time = time()
 closer_body = {"angle":0,"distance":0}
 IDLE = False
@@ -176,7 +175,7 @@ while True:
         except:
             pass  # Skip sensor if reading fails
     
-    if min_index != -1 or prev_move_time < TRACKING_DURATION :
+    if min_index != -1 or prev_move_time < randint(TRACKING_DURATION[0],TRACKING_DURATION[1]) :
         # if presency is detected (during the last TRACKING DURATION secondes)
         closer_body["angle"] = min_index*(math.pi/4) #in radian
         closer_body["distance"] = min_range
@@ -189,9 +188,11 @@ while True:
             uart.write(b"$Motor/Enable\n") #enable all stepper
             sleep_ms(50)
             IDLE = False
+        
+        # --- increment the fast moving counter to ensure a proper homing state of the device
+        fast_cycle_count += 1
             
-            
-        if closer_body["distance"] < STRESS_TRIGER_DISTANCE :
+        if closer_body["distance"] < STRESS_TRIGER_DISTANCE :       
         # STRESS BEAVIOUR
             if debug:
                 print("stress")
@@ -246,9 +247,6 @@ while True:
 
             # --- Save state for next iteration ---
             prev_pos = pos.copy()
-            
-            # --- increment the counter to ensure a proper homing state of the device
-            stress_cycle_count += 1
                 
         else :
         # TRACKING BEAHAVIOUR
@@ -301,15 +299,15 @@ while True:
             prev_pos = pos.copy()
             prev_move_time = time()
             prev_min_index = min_index
-
+            
     else:
         # no detection
         if debug:
             print(f"no detection")
         
-        if stress_cycle_count - HOMING_COUNT > 0:
+        if fast_cycle_count - HOMING_COUNT > 0:
             homing()
-            stress_cycle_count = 0
+            fast_cycle_count  = 0
             
         if time()-prev_move_time > BREATHING_WAIT:
             # slow breathing beaviour = going back to center
